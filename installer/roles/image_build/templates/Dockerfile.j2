@@ -71,7 +71,7 @@ RUN chmod +x /tini
 RUN python3 -m ensurepip && pip3 install virtualenv
 RUN pip install supervisor
 
-RUN find / -name pg_config
+RUN find / -xdev -name pg_config
 
 ADD Makefile /tmp/Makefile
 RUN mkdir /tmp/requirements
