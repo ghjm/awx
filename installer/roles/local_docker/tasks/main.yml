@@ -24,7 +24,7 @@
 
 - name: Stop AWX before upgrading postgres
   docker_service:
-    project_src: "{{ docker_compose_dir }}"
+    project_src: "{{ container_compose_dir }}"
     stopped: yes
   when: upgrade_postgres | bool
 

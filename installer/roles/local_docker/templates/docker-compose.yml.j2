@@ -20,9 +20,9 @@ services:
     user: root
     restart: unless-stopped
     volumes:
-      - "{{ docker_compose_dir }}/SECRET_KEY:/etc/tower/SECRET_KEY"
-      - "{{ docker_compose_dir }}/environment.sh:/etc/tower/conf.d/environment.sh"
-      - "{{ docker_compose_dir }}/credentials.py:/etc/tower/conf.d/credentials.py"
+      - "{{ container_compose_dir }}/SECRET_KEY:/etc/tower/SECRET_KEY"
+      - "{{ container_compose_dir }}/environment.sh:/etc/tower/conf.d/environment.sh"
+      - "{{ container_compose_dir }}/credentials.py:/etc/tower/conf.d/credentials.py"
     {% if project_data_dir is defined %}
       - "{{ project_data_dir +':/var/lib/awx/projects:rw' }}"
     {% endif %}
@@ -69,9 +69,9 @@ services:
     user: root
     restart: unless-stopped
     volumes:
-      - "{{ docker_compose_dir }}/SECRET_KEY:/etc/tower/SECRET_KEY"
-      - "{{ docker_compose_dir }}/environment.sh:/etc/tower/conf.d/environment.sh"
-      - "{{ docker_compose_dir }}/credentials.py:/etc/tower/conf.d/credentials.py"
+      - "{{ container_compose_dir }}/SECRET_KEY:/etc/tower/SECRET_KEY"
+      - "{{ container_compose_dir }}/environment.sh:/etc/tower/conf.d/environment.sh"
+      - "{{ container_compose_dir }}/credentials.py:/etc/tower/conf.d/credentials.py"
     {% if project_data_dir is defined %}
       - "{{ project_data_dir +':/var/lib/awx/projects:rw' }}"
     {% endif %}

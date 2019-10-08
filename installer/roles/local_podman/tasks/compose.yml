@@ -1,0 +1,122 @@
+---
+- name: Create {{ container_compose_dir }} directory
+  file:
+    path: "{{ container_compose_dir }}"
+    state: directory
+
+- name: Create Compose Configuration
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ container_compose_dir }}/{{ item }}"
+    mode: 0600
+  with_items:
+    - environment.sh
+    - credentials.py
+  register: awx_compose_config
+
+- name: Render SECRET_KEY file
+  copy:
+    content: "{{ secret_key }}"
+    dest: "{{ container_compose_dir }}/SECRET_KEY"
+    mode: 0600
+  register: awx_secret_key
+
+- name: Create the awx pod
+  command: >
+    podman pod create --name awx
+    --publish 8052
+    {% if ssl_certificate is defined %}
+    --publish 8053
+    {% endif %}
+
+- name: Create the awx_web container
+  command: >
+    echo podman run --pod awx --name awx_web --detach
+    --expose 8052
+    {% if ssl_certificate is defined %}
+    --expose 8053
+    {% endif %}
+    --volume {{ container_compose_dir }}/SECRET_KEY:/etc/tower/SECRET_KEY:Z
+    --volume {{ container_compose_dir }}/environment.sh:/etc/tower/conf.d/environment.sh:Z
+    --volume {{ container_compose_dir }}/credentials.py:/etc/tower/conf.d/credentials.py:Z
+    {% if project_data_dir is defined %}
+    --volume {{ project_data_dir }}:/var/lib/awx/projects:Z
+    {% endif %}
+    {% if ca_trust_dir is defined %}
+    --volume {{ ca_trust_dir }}:/etc/pki/ca-trust/source/anchors:Z
+    {% endif %}
+    {% if ssl_certificate is defined %}
+    --volume {{ ssl_certificate }}:/etc/nginx/awxweb.pem:Z
+    {% endif %}
+    --env http_proxy={{ http_proxy | default('') }}
+    --env https_proxy={{ https_proxy | default('') }}
+    --env no_proxy={{ no_proxy | default('') }}
+    {{ awx_web_actual_image }}
+    
+- name: Create the awx_task container
+  command: >
+    echo podman run --pod awx --name awx_task --detach
+    --volume {{ container_compose_dir }}/SECRET_KEY:/etc/tower/SECRET_KEY:Z
+    --volume {{ container_compose_dir }}/environment.sh:/etc/tower/conf.d/environment.sh:Z
+    --volume {{ container_compose_dir }}/credentials.py:/etc/tower/conf.d/credentials.py:Z
+    {% if project_data_dir is defined %}
+    --volume {{ project_data_dir }}:/var/lib/awx/projects:Z
+    {% endif %}
+    {% if ca_trust_dir is defined %}
+    --volume {{ ca_trust_dir }}:/etc/pki/ca-trust/source/anchors:Z
+    {% endif %}
+    {% if ssl_certificate is defined %}
+    --volume {{ ssl_certificate }}:/etc/nginx/awxweb.pem:Z
+    {% endif %}
+    --env http_proxy={{ http_proxy | default('') }}
+    --env https_proxy={{ https_proxy | default('') }}
+    --env no_proxy={{ no_proxy | default('') }}
+    {{ awx_task_actual_image }}
+    
+- name: Create the rabbitmq container
+  command: >
+    podman run --pod awx --detach --name awx_rabbitmq
+    --env RABBITMQ_DEFAULT_VHOST=awx
+    --env RABBITMQ_DEFAULT_USER=guest
+    --env RABBITMQ_DEFAULT_PASS=guest
+    --env RABBITMQ_ERLANG_COOKIE=cookiemonster
+    --env http_proxy={{ http_proxy | default('') }}
+    --env https_proxy={{ https_proxy | default('') }}
+    --env no_proxy={{ no_proxy | default('') }}
+    {{ rabbitmq_image }}
+    
+- name: Create the memcached container
+  command: >
+    podman run --pod awx --detach --name awx_memcached
+    --env http_proxy={{ http_proxy | default('') }}
+    --env https_proxy={{ https_proxy | default('') }}
+    --env no_proxy={{ no_proxy | default('') }}
+    {{ memcached_image }}:{{ memcached_version }}
+
+- name: Make sure the postgres data directory exists
+  file:
+    name: "{{ postgres_data_dir }}/10/data"
+    state: directory
+
+- name: Create the postgres container
+  command: >
+    podman run --pod awx --detach --name awx_postgres
+    --volume {{ postgres_data_dir }}/10/data:/var/lib/postgresql/data/pgdata:Z
+    --env POSTGRES_USER={{ pg_username }}
+    --env POSTGRES_PASSWORD={{ pg_password }}
+    --env POSTGRES_DB={{ pg_database }}
+    --env PGDATA=/var/lib/postgresql/data/pgdata
+    --env http_proxy={{ http_proxy | default('') }}
+    --env https_proxy={{ https_proxy | default('') }}
+    --env no_proxy={{ no_proxy | default('') }}
+    postgres:10
+  when: pg_hostname is not defined
+
+- name: Update CA trust in awx_web container
+  command: podman exec awx_web '/usr/bin/update-ca-trust'
+  when: ca_trust_dir is defined
+
+- name: Update CA trust in awx_task container
+  command: podman exec awx_task '/usr/bin/update-ca-trust'
+  when: ca_trust_dir is defined
+

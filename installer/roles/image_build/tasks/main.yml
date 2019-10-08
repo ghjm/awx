@@ -1,9 +1,9 @@
 ---
 - name: Run Docker build
   include_tasks: docker.yml
-  when: awx_build_using|default("docker") == "docker"
+  when: local_container_system|default("docker") == "docker"
 
 - name: Run Podman build
   include_tasks: podman.yml
-  when: awx_build_using|default("docker") == "podman"
+  when: local_container_system|default("docker") == "podman"
 

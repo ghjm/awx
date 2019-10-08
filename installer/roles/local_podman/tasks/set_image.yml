@@ -1,0 +1,12 @@
+---
+- name: Set Local Image Paths
+  set_fact:
+    awx_web_actual_image: "awx_web:latest"
+    awx_task_actual_image: "awx_task:latest"
+  when: dockerhub_base is not defined
+
+- name: Set DockerHub Image Paths
+  set_fact:
+    awx_web_actual_image: "{{ dockerhub_base }}/awx_web:{{ dockerhub_version }}"
+    awx_task_actual_image: "{{ dockerhub_base }}/awx_task:{{ dockerhub_version }}"
+  when: dockerhub_base is defined
